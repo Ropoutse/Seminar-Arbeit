@@ -36,6 +36,7 @@ mytext <- get_sentences(complete1)
 complete1.sent <-sentiment_by(mytext)
 complete1$sent <- complete1.sent$ave_sentiment
 
+
 complete1$recretweet <- 1-(complete1$Retweet^-1)
 complete1$reclikes <- 1-(complete1$Likes^-1)
 complete1$logfollowers<- log(complete1$Followers+1)
@@ -45,6 +46,7 @@ complete1$sclogret<- scale(log(complete1$Retweet))
 complete1$pos<-if_else(complete1$sent>0,complete1$sent, 0)
 complete1$neg<-if_else(complete1$sent<0,(complete1$sent)*-1, 0)
 summary(complete1)
+unique(complete1$user_id)
 
 mod.ret=lmerTest::lmer(recretweet~pos+neg+scloglik+scalelogfollowers+(1|user_id), data=complete1)
 mod.lik=lmerTest::lmer(reclikes~pos+neg+sclogret+scalelogfollowers+(1|user_id),data=complete1)
@@ -69,6 +71,8 @@ mlm_plot.lik
 r.squaredGLMM(mod.ret)
 summary(mod.ret)
 
+mod.ret=lmerTest::lmer(recretweet~pos+neg+scloglik+scalelogfollowers+(1|user_id), data=complete1)
+mod.lik=lmerTest::lmer(reclikes~pos+neg+sclogret+scalelogfollowers+(1|user_id),data=complete1)
 r.squaredGLMM(mod.lik)
 summary(mod.lik)
 tab_model(mod.ret, digits=5, digits.re = 5, digits.p=3, emph.p=F, show.se=T)
@@ -79,4 +83,41 @@ qqline(resid(mod.ret), col = "red")
 qqnorm(resid(mod.lik), main = "Q-Q Plot for the likes model")
 qqline(resid(mod.lik), col = "red")
 
+complete1$loglik <- log(complete1$Likes)
+complete1$logret <-log(complete1$Retweet)
 
+ret.lm <-lm(recretweet~pos+neg+loglik+logfollowers, data=complete1)
+lik.lm <-lm(reclikes~pos+neg+logret+logfollowers, data=complete1)
+
+lmtest::bptest(ret.lm)
+plot(fitted(ret.lm),resid(ret.lm))
+
+
+mod.retlog <- lmer(recretweet~pos+neg+loglik+logfollowers+(1|user_id), data=complete1)
+mod.liklog <- lmer(reclikes~pos+neg+logret+logfollowers+(1|user_id), data=complete1)
+
+
+par(mfrow = c(1, 3))
+qqnorm(resid(lik.lm), main = "Base linear regression model")
+qqline(resid(lik.lm), col = "red")
+qqnorm(resid(mod.liklog), main = "Linear mixed effects model with log covariables")
+qqline(resid(mod.liklog), col = "red")
+qqnorm(resid(mod.lik), main = "Linear mixed effects model with scaled covariables")
+qqline(resid(mod.lik), col = "red")
+par(mfrow = c(1, 1))
+
+
+
+par(mfrow = c(1, 3))
+qqnorm(resid(ret.lm), main = "Base linear regression model")
+qqline(resid(ret.lm), col = "red")
+qqnorm(resid(mod.retlog), main = "Linear mixed effects model with log covariables")
+qqline(resid(mod.retlog), col = "red")
+qqnorm(resid(mod.ret), main = "Linear mixed effects model with scaled covariables")
+qqline(resid(mod.ret), col = "red")
+par(mfrow = c(1, 1))
+
+
+
+AIC(ret.lm, mod.ret, mod.retlog)
+AIC(lik.lm, mod.lik, mod.liklog)
